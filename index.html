@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STM32 IC Tester</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔌 STM32 IC Tester</h1>
+            <p>Universal Web Interface</p>
+        </div>
+        
+        <div class="connection-bar">
+            <button id="connectBtn" class="btn-primary">Connect to STM32</button>
+            <span id="status" class="status disconnected">Disconnected</span>
+        </div>
+
+        <div class="content">
+            <!-- IC Type Selection -->
+            <div class="section">
+                <h2>Select IC Type</h2>
+                <div class="form-group">
+                    <label>What type of IC do you want to test?</label>
+                    <select id="icTypeSelector" onchange="showICInterface()">
+                        <option value="">-- Select IC Type --</option>
+                        <option value="logic-gate">Logic Gates (7404, 7408, 7432, etc.)</option>
+                        <option value="multiplexer">Multiplexer (74151, 74153, etc.)</option>
+                        <option value="counter">Counter (7490, 7493, 74193, etc.)</option>
+                        <option value="flipflop">Flip-Flop (7474, 7476, etc.)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- ==================== LOGIC GATES INTERFACE ==================== -->
+            <div id="logic-gate-interface" class="ic-interface" style="display: none;">
+                <div class="section">
+                    <h2>Logic Gate Configuration</h2>
+                    <div class="form-group">
+                        <label>IC Name:</label>
+                        <input type="text" id="icName" placeholder="e.g., 7404, 7432">
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button class="btn-primary" onclick="openGateDialog()">➕ Add Gate</button>
+                        <button class="btn-secondary" onclick="clearGates()">🗑️ Clear All</button>
+                        <button class="btn-secondary" onclick="loadFromJSON()">📁 Load JSON</button>
+                        <button class="btn-secondary" onclick="saveToJSON()">💾 Save JSON</button>
+                    </div>
+                    
+                    <div class="gate-list" id="gateList">
+                        <p style="color: #999;">No gates configured yet</p>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2>Actions</h2>
+                    <div class="btn-group">
+                        <button class="btn-success" onclick="testIC()">🧪 Test IC</button>
+                        <button class="btn-secondary" onclick="viewBinary()">👁️ View Binary Packet</button>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2>Test Results</h2>
+                    <div class="result-box" id="results">Waiting for test...</div>
+                </div>
+            </div>
+
+            <!-- ==================== MULTIPLEXER INTERFACE ==================== -->
+            <div id="multiplexer-interface" class="ic-interface" style="display: none;">
+                <div class="section">
+                    <h2>Multiplexer Configuration</h2>
+                    
+                    <div class="form-group">
+                        <label>IC Name:</label>
+                        <input type="text" id="muxName" placeholder="e.g., 74153 (dual 4-to-1)">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Number of MUXes in IC:</label>
+                        <select id="numMuxes" onchange="updateMuxCount()">
+                            <option value="1">1 MUX</option>
+                            <option value="2">2 MUXes</option>
+                            <option value="3">3 MUXes</option>
+                            <option value="4">4 MUXes</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>MUX Type:</label>
+                        <select id="muxType" onchange="updateAllMuxConfigs()">
+                            <option value="2to1">2-to-1 MUX</option>
+                            <option value="4to1">4-to-1 MUX</option>
+                            <option value="8to1">8-to-1 MUX (74151)</option>
+                            <option value="16to1">16-to-1 MUX</option>
+                        </select>
+                    </div>
+
+                    <div id="muxConfigContainer"></div>
+
+                    <div class="btn-group">
+                        <button class="btn-success" onclick="testMux()">🧪 Test MUX</button>
+                        <button class="btn-secondary" onclick="saveMuxConfig()">💾 Save Config</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Test Results</h2>
+                    <div class="result-box" id="muxResults">Waiting for test...</div>
+                </div>
+            </div>
+
+            <!-- ==================== COUNTER INTERFACE ==================== -->
+            <div id="counter-interface" class="ic-interface" style="display: none;">
+                <div class="section">
+                    <h2>Counter Configuration</h2>
+                    <div class="form-group">
+                        <label>Counter Type:</label>
+                        <select id="counterType" onchange="updateCounterConfig()">
+                            <option value="4bit">4-bit Binary Counter (7493)</option>
+                            <option value="decade">Decade Counter (7490)</option>
+                            <option value="updown">Up/Down Counter (74193)</option>
+                            <option value="custom">Custom Counter</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>IC Name:</label>
+                        <input type="text" id="counterName" placeholder="e.g., 7490">
+                    </div>
+
+                    <div id="counterPinConfig"></div>
+
+                    <div class="form-group">
+                        <label>Number of Clock Pulses:</label>
+                        <input type="number" id="counterPulses" value="16" min="1" max="256">
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn-success" onclick="testCounter()">🧪 Test Counter</button>
+                        <button class="btn-secondary" onclick="saveCounterConfig()">💾 Save Config</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Test Results</h2>
+                    <div class="result-box" id="counterResults">Waiting for test...</div>
+                </div>
+            </div>
+
+            <!-- ==================== FLIP-FLOP INTERFACE ==================== -->
+            <div id="flipflop-interface" class="ic-interface" style="display: none;">
+                <div class="section">
+                    <h2>Flip-Flop Configuration</h2>
+                    
+                    <div class="form-group">
+                        <label>IC Name:</label>
+                        <input type="text" id="ffName" placeholder="e.g., 7474 (dual D FF)">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Number of Flip-Flops in IC:</label>
+                        <select id="numFFs" onchange="updateFFCount()">
+                            <option value="1">1 Flip-Flop</option>
+                            <option value="2">2 Flip-Flops</option>
+                            <option value="3">3 Flip-Flops</option>
+                            <option value="4">4 Flip-Flops</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Flip-Flop Type:</label>
+                        <select id="ffType" onchange="updateAllFFConfigs()">
+                            <option value="D">D Flip-Flop (7474)</option>
+                            <option value="JK">JK Flip-Flop (7476)</option>
+                            <option value="T">T Flip-Flop</option>
+                            <option value="SR">SR Flip-Flop</option>
+                        </select>
+                    </div>
+
+                    <div id="ffConfigContainer"></div>
+
+                    <div class="form-group">
+                        <label>Test Sequence Steps:</label>
+                        <input type="number" id="ffSteps" value="8" min="1" max="32">
+                    </div>
+
+                    <div class="btn-group">
+    <button class="btn-success" onclick="testFlipFlop()">🧪 Test Flip-Flop</button>
+    <button class="btn-secondary" onclick="saveFFConfig()">💾 Save Config</button>
+    <button class="btn-secondary" onclick="loadFFConfig()">📁 Load Config</button>
+</div>
+                </div>
+
+                <div class="section">
+                    <h2>Test Results</h2>
+                    <div class="result-box" id="ffResults">Waiting for test...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ==================== ADD GATE MODAL ==================== -->
+    <div class="modal" id="gateModal">
+        <div class="modal-content">
+            <h2>Add Gate Configuration</h2>
+            
+            <div class="form-group">
+                <label>Number of Inputs:</label>
+                <select id="numInputs" onchange="updatePinSelectors()">
+                    <option value="1">1</option>
+                    <option value="2" selected>2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Number of Outputs:</label>
+                <select id="numOutputs" onchange="updatePinSelectors()">
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Input Pins:</label>
+                <div class="pin-selects" id="inputPins"></div>
+            </div>
+            
+            <div class="form-group">
+                <label>Output Pins:</label>
+                <div class="pin-selects" id="outputPins"></div>
+            </div>
+            
+            <div class="form-group">
+                <label>Truth Table:</label>
+                <div class="truth-table" id="truthTable"></div>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn-success" onclick="saveGate()">Save Gate</button>
+                <button class="btn-secondary" onclick="closeGateDialog()">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
+
