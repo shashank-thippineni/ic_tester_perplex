@@ -3,18 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>STM32 IC Tester</title>
+    <title>Arduino IC Tester</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔌 STM32 IC Tester</h1>
-            <p>Universal Web Interface</p>
+            <h1>🔌 Arduino IC Tester</h1>
+            <p>Universal Web Interface - UNO/Mega Compatible</p>
         </div>
         
         <div class="connection-bar">
-            <button id="connectBtn" class="btn-primary">Connect to STM32</button>
+            <div class="form-group" style="display: inline-block; margin-right: 20px;">
+                <label style="color: white; margin-right: 10px;">Board Type:</label>
+                <select id="boardSelector" onchange="updateBoardType()" style="padding: 8px;">
+                    <option value="UNO">Arduino UNO (D2-D13)</option>
+                    <option value="MEGA">Arduino Mega (D22-D33)</option>
+                </select>
+            </div>
+            <button id="connectBtn" class="btn-primary">Connect to Arduino</button>
             <span id="status" class="status disconnected">Disconnected</span>
         </div>
 
@@ -30,6 +37,7 @@
                         <option value="multiplexer">Multiplexer (74151, 74153, etc.)</option>
                         <option value="counter">Counter (7490, 7493, 74193, etc.)</option>
                         <option value="flipflop">Flip-Flop (7474, 7476, etc.)</option>
+                        <option value="analog">Analog IC</option>
                     </select>
                 </div>
             </div>
@@ -50,7 +58,7 @@
                         <button class="btn-secondary" onclick="saveToJSON()">💾 Save JSON</button>
                     </div>
                     
-                    <div class="gate-list" id="gateList">
+                    <div class="gate-list" id="gatesList">
                         <p style="color: #999;">No gates configured yet</p>
                     </div>
                 </div>
@@ -69,137 +77,132 @@
                 </div>
             </div>
 
-            <!-- ==================== MULTIPLEXER INTERFACE ==================== -->
-            <div id="multiplexer-interface" class="ic-interface" style="display: none;">
-                <div class="section">
-                    <h2>Multiplexer Configuration</h2>
-                    
-                    <div class="form-group">
-                        <label>IC Name:</label>
-                        <input type="text" id="muxName" placeholder="e.g., 74153 (dual 4-to-1)">
-                    </div>
+          <!-- MULTIPLEXER INTERFACE -->
+<div id="multiplexer-interface" class="ic-interface" style="display: none;">
+    <div class="section">
+        <h2>⚡ Multiplexer/Demultiplexer Tester</h2>
+        
+        <div class="form-group">
+            <label for="muxMode">Mode:</label>
+            <select id="muxMode" onchange="updateMuxUI()">
+                <option value="">-- Select Mode --</option>
+                <option value="mux">Multiplexer (MUX)</option>
+                <option value="demux">Demultiplexer (DEMUX)</option>
+            </select>
+        </div>
 
-                    <div class="form-group">
-                        <label>Number of MUXes in IC:</label>
-                        <select id="numMuxes" onchange="updateMuxCount()">
-                            <option value="1">1 MUX</option>
-                            <option value="2">2 MUXes</option>
-                            <option value="3">3 MUXes</option>
-                            <option value="4">4 MUXes</option>
-                        </select>
-                    </div>
+        <div class="form-group">
+            <label for="muxType">Type:</label>
+            <select id="muxType" onchange="updateMuxUI()">
+                <option value="">-- Select Type --</option>
+            </select>
+        </div>
 
-                    <div class="form-group">
-                        <label>MUX Type:</label>
-                        <select id="muxType" onchange="updateAllMuxConfigs()">
-                            <option value="2to1">2-to-1 MUX</option>
-                            <option value="4to1">4-to-1 MUX</option>
-                            <option value="8to1">8-to-1 MUX (74151)</option>
-                            <option value="16to1">16-to-1 MUX</option>
-                        </select>
-                    </div>
+        <div id="muxPinConfig"></div>
 
-                    <div id="muxConfigContainer"></div>
+        <button class="btn-primary" onclick="runMuxTest()" style="margin-top: 20px;">
+            🧪 Run Test
+        </button>
+    </div>
 
-                    <div class="btn-group">
-                        <button class="btn-success" onclick="testMux()">🧪 Test MUX</button>
-                        <button class="btn-secondary" onclick="saveMuxConfig()">💾 Save Config</button>
-                    </div>
-                </div>
+    <div class="section">
+        <h2>Test Results</h2>
+        <div id="muxResults" class="result-box">
+            Waiting for test...
+        </div>
+    </div>
+</div>
 
-                <div class="section">
-                    <h2>Test Results</h2>
-                    <div class="result-box" id="muxResults">Waiting for test...</div>
-                </div>
-            </div>
+
+
 
             <!-- ==================== COUNTER INTERFACE ==================== -->
             <div id="counter-interface" class="ic-interface" style="display: none;">
-                <div class="section">
-                    <h2>Counter Configuration</h2>
-                    <div class="form-group">
-                        <label>Counter Type:</label>
-                        <select id="counterType" onchange="updateCounterConfig()">
-                            <option value="4bit">4-bit Binary Counter (7493)</option>
-                            <option value="decade">Decade Counter (7490)</option>
-                            <option value="updown">Up/Down Counter (74193)</option>
-                            <option value="custom">Custom Counter</option>
-                        </select>
-                    </div>
+  <h2>Counter Testing</h2>
 
-                    <div class="form-group">
-                        <label>IC Name:</label>
-                        <input type="text" id="counterName" placeholder="e.g., 7490">
-                    </div>
+  <div class="form-group">
+    <label>Select Counter IC:</label>
+    <select id="counterType" onchange="updateCounterPinUI()">
+      <option value="">-- Select Type --</option>
+      <option value="4017">4017 (Decade Counter)</option>
+      <option value="7493">7493 (4-bit Binary Counter)</option>
+    </select>
+  </div>
 
-                    <div id="counterPinConfig"></div>
+  <div class="form-group">
+    <label>Pin Configuration Mode:</label>
+    <select id="counterPinMode" onchange="updateCounterPinUI()">
+      <option value="auto">Use Default</option>
+      <option value="manual">Manual Entry</option>
+    </select>
+  </div>
 
-                    <div class="form-group">
-                        <label>Number of Clock Pulses:</label>
-                        <input type="number" id="counterPulses" value="16" min="1" max="256">
-                    </div>
+  <div id="counterPinConfig"></div>
 
-                    <div class="btn-group">
-                        <button class="btn-success" onclick="testCounter()">🧪 Test Counter</button>
-                        <button class="btn-secondary" onclick="saveCounterConfig()">💾 Save Config</button>
-                    </div>
-                </div>
+  <div class="form-group">
+    <label>Number of Pulses to Apply:</label>
+    <input type="number" id="counterPulses" min="1" max="50" value="10">
+  </div>
 
-                <div class="section">
-                    <h2>Test Results</h2>
-                    <div class="result-box" id="counterResults">Waiting for test...</div>
-                </div>
-            </div>
+  <button onclick="testCounter()">Test Counter</button>
+
+  <div id="counterResults" class="output-box"></div>
+</div>
 
             <!-- ==================== FLIP-FLOP INTERFACE ==================== -->
             <div id="flipflop-interface" class="ic-interface" style="display: none;">
-                <div class="section">
-                    <h2>Flip-Flop Configuration</h2>
-                    
-                    <div class="form-group">
-                        <label>IC Name:</label>
-                        <input type="text" id="ffName" placeholder="e.g., 7474 (dual D FF)">
-                    </div>
+  <div class="section">
+    <h2>Flip-Flop Configuration</h2>
 
-                    <div class="form-group">
-                        <label>Number of Flip-Flops in IC:</label>
-                        <select id="numFFs" onchange="updateFFCount()">
-                            <option value="1">1 Flip-Flop</option>
-                            <option value="2">2 Flip-Flops</option>
-                            <option value="3">3 Flip-Flops</option>
-                            <option value="4">4 Flip-Flops</option>
-                        </select>
-                    </div>
+    <div class="form-group">
+      <label>IC Name:</label>
+      <input type="text" id="ffName" placeholder="e.g., 7474 (dual D FF)">
+    </div>
 
-                    <div class="form-group">
-                        <label>Flip-Flop Type:</label>
-                        <select id="ffType" onchange="updateAllFFConfigs()">
-                            <option value="D">D Flip-Flop (7474)</option>
-                            <option value="JK">JK Flip-Flop (7476)</option>
-                            <option value="T">T Flip-Flop</option>
-                            <option value="SR">SR Flip-Flop</option>
-                        </select>
-                    </div>
+    <div class="form-group">
+      <label>Number of Flip-Flops in IC:</label>
+      <select id="numFFs" onchange="updateFFCount()">
+        <option value="1">1 Flip-Flop</option>
+        <option value="2" selected>2 Flip-Flops</option>
+        <option value="3">3 Flip-Flops</option>
+        <option value="4">4 Flip-Flops</option>
+      </select>
+    </div>
 
-                    <div id="ffConfigContainer"></div>
+    <div class="form-group">
+      <label><input type="checkbox" id="sameTypeToggle" checked> Use Same Type for All Flip-Flops</label>
+    </div>
 
-                    <div class="form-group">
-                        <label>Test Sequence Steps:</label>
-                        <input type="number" id="ffSteps" value="8" min="1" max="32">
-                    </div>
+    <div id="ffConfigContainer"></div>
 
-                    <div class="btn-group">
-    <button class="btn-success" onclick="testFlipFlop()">🧪 Test Flip-Flop</button>
-    <button class="btn-secondary" onclick="saveFFConfig()">💾 Save Config</button>
-    <button class="btn-secondary" onclick="loadFFConfig()">📁 Load Config</button>
+    <div class="btn-group" style="margin-top: 12px;">
+      <button class="btn-success" onclick="testFlipFlops()">🧪 Test Flip-Flops</button>
+      <button class="btn-secondary" onclick="saveFFConfig()">💾 Save Config</button>
+      <button class="btn-secondary" onclick="loadFFConfig()">📁 Load Config</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Test Results</h2>
+    <div class="result-box" id="ffResults">Waiting for test...</div>
+  </div>
 </div>
-                </div>
+<!-- ==================== ANALOG INTERFACE (NE555 TIMER) ==================== -->
+<div id="analog-interface" class="ic-interface" style="display: none;">
+  <div class="section">
+    <h2>Analog IC Testing - NE555 Timer</h2>
+    <p>This test checks the <strong>NE555 timer</strong> in astable mode (≈80 Hz).</p>
 
-                <div class="section">
-                    <h2>Test Results</h2>
-                    <div class="result-box" id="ffResults">Waiting for test...</div>
-                </div>
-            </div>
+    <div class="btn-group">
+      <button class="btn-success" onclick="testNE555()">🧪 Test NE555 Timer</button>
+    </div>
+
+    <div class="section">
+      <h2>Test Results</h2>
+      <div id="analogResults" class="result-box">Waiting for test...</div>
+    </div>
+  </div>
+</div>
         </div>
     </div>
     
@@ -251,4 +254,3 @@
     <script src="app.js"></script>
 </body>
 </html>
-
